@@ -32,6 +32,8 @@ kind: Namespace
 metadata:
   creationTimestamp: null
   name: blue
+  labels:
+    name: blue
 spec: {}
 status: {}
 ---
@@ -109,38 +111,53 @@ status: {}
 #           run: red
 #           run: green
 # ---
-kubectl create -f -<<EOF
-kind: NetworkPolicy
-apiVersion: networking.k8s.io/v1
-metadata:
-  name: blue
-  # ingress/1: pod###run=green,pod###run=red&ns###name=blue
-  # egress/1: pod###run=green,pod###run=red&ns###name=blue
-spec:
-  podSelector:
-    matchLabels:
-      run: blue
-  egress:
-  - to:
-      - podSelector:
-          matchLabels:
-            run: red
-        namespaceSelector:
-          matchLabels:
-            name: blue
-      - podSelector:
-          matchLabels:
-            run: green
-  ingress:
-  - from:
-      - podSelector:
-          matchLabels:
-            run: red
-        namespaceSelector:
-          matchLabels:
-            name: blue
-      - podSelector:
-          matchLabels:
-            run: green
+# kubectl create -f -<<EOF
+# kind: NetworkPolicy
+# apiVersion: networking.k8s.io/v1
+# metadata:
+#   name: blue
+#   # ingress/1: pod###run=green,pod###run=red&ns###name=blue
+#   # egress/1: pod###run=green,pod###run=red&ns###name=blue
+# spec:
+#   podSelector:
+#     matchLabels:
+#       run: blue
+#   egress:
+#   - to:
+#       - podSelector:
+#           matchLabels:
+#             run: red
+#         namespaceSelector:
+#           matchLabels:
+#             name: blue
+#       - podSelector:
+#           matchLabels:
+#             run: green
+#   ingress:
+#   - from:
+#       - podSelector:
+#           matchLabels:
+#             run: red
+#         namespaceSelector:
+#           matchLabels:
+#             name: blue
+#       - podSelector:
+#           matchLabels:
+#             run: green
 EOF
+```
+
+Test the network policy
+
+Curl against blue pod from red pod in blue namespace
+```bash
+BLUE_IP=$(kubectl get po blue --template='{{.status.podIP}}')
+k exec -it red -n blue -- curl -I $BLUE_IP
+
+k exec it green  -- curl -I $BLUE_IP
+```
+
+Create a purple pod to make sure it's blocked
+```bash
+k run purple --image=nginx:alpine --rm -it --restart=Never  -- curl $BLUE_IP
 ```
