@@ -18,13 +18,9 @@ export class K8sAPI {
 
 
   async buildNetworkPolicies(networkPolicyMap: NetworkPolicyMap, name: string, namespace: string): Promise<void> {
-    const ingressRule: any = {
-      from: []
-    }
 
     let spec: k8s.V1NetworkPolicySpec = {
       podSelector: {
-        // matchLabels of the pods to which this policy applies
         matchLabels: networkPolicyMap
       },
       policyTypes: [],
@@ -56,11 +52,8 @@ export class K8sAPI {
 
           let arrayElements = value.split('ALSO');
           // ['pod-run=green', 'pod-run=red.ns-name=blue']
-
-
-
           arrayElements.forEach((element, idx) => {
-         
+
 
             // isolate each rule
             let rule = element.split('AND');
@@ -82,15 +75,12 @@ export class K8sAPI {
                         }
                       }
                     })
-
                   } else {
                     spec.egress[0].to[idx].ipBlock = { cidr: '' }
                   }
-
-
                 } else {
-                  try {
-                    if(spec.ingress[0].from[idx] == undefined){
+         
+                    if (spec.ingress[0].from[idx] == undefined) {
                       spec.ingress[0].from.push({
                         podSelector: {
                           matchLabels: {
@@ -99,35 +89,32 @@ export class K8sAPI {
                         }
                       })
                     } else {
+                      if(spec.ingress[0].from[idx].podSelector === undefined) {
+                        spec.ingress[0].from[idx].podSelector = {matchLabels:{}}
+                      }
                       spec.ingress[0].from[idx].podSelector.matchLabels[labels[0]] = labels[1];
                     }
-                 
-                    // 
-                    console.log(`SPEC\n${JSON.stringify(spec, undefined, 2)}`)
-                  }
-                  catch (err) {
-                    console.log("with matchlabels " + err + "spec is " + JSON.stringify(spec, undefined, err))
-                  }
-
                 }
               } else if (ruleElement.startsWith("ipblock-")) {
                 if (isEgress) {
-                  if (spec.egress[0].to[idx].ipBlock === undefined) {
+                  if (spec.egress[0].to[idx] === undefined) {
                     spec.egress[0].to.push({
                       ipBlock: {
-                        cidr:ruleElement.substring('ipblock-'.length)
+                        cidr: ruleElement.substring('ipblock-'.length)
                       }
                     })
-                    
+
                   } else {
+                    if (spec.egress[0].to[idx].ipBlock == undefined) {
+                      spec.egress[0].to[idx].ipBlock = { cidr: "" }
+                    }
                     spec.egress[0].to[idx].ipBlock.cidr = ruleElement.substring('ipblock-'.length);
                   }
-                  
+
                 } else {
                   if (spec.ingress[0].from[idx].ipBlock == undefined) {
                     spec.ingress[0].from[idx].ipBlock = { cidr: '' }
                   }
-
                   spec.ingress[0].from[idx].ipBlock.cidr = ruleElement.substring('ipblock-'.length);
                 }
 
@@ -140,31 +127,27 @@ export class K8sAPI {
                 if (isEgress) {
                   if (spec.egress[0].to[idx] == undefined) {
                     spec.egress[0].to.push({
-                      namespaceSelector:{
-                        matchLabels:{
-                          [labels[0]]:labels[1]
+                      namespaceSelector: {
+                        matchLabels: {
+                          [labels[0]]: labels[1]
                         }
                       }
                     })
-                    
+
                   } else {
-                 
-                    try {
-                      
-                      spec.egress[0].to[idx].namespaceSelector.matchLabels[labels[0]] = labels[1];
-                    } catch(err) {
-                      console.log(err, JSON.stringify(spec,undefined,2))
+                    if (spec.egress[0].to[idx].namespaceSelector == undefined) {
+                      spec.egress[0].to[idx].namespaceSelector = { matchLabels: {} }
                     }
-                    
+                    spec.egress[0].to[idx].namespaceSelector.matchLabels[labels[0]] = labels[1];
                   }
-                  
+
                 }
                 else {
-                  if(spec.ingress[0].from[idx] === undefined) {
+                  if (spec.ingress[0].from[idx] === undefined) {
                     spec.ingress[0].from.push({
-                      namespaceSelector:{
-                        matchLabels:{
-                          [labels[0]]:labels[1]
+                      namespaceSelector: {
+                        matchLabels: {
+                          [labels[0]]: labels[1]
                         }
                       }
                     })
@@ -174,7 +157,7 @@ export class K8sAPI {
                     }
                     spec.ingress[0].from[idx].namespaceSelector.matchLabels[labels[0]] = labels[1];
                   }
-                
+
                 }
               }
             })
