@@ -109,38 +109,38 @@ status: {}
 #           run: red
 #           run: green
 # ---
-# kubectl replace -f -<<EOF
-# kind: NetworkPolicy
-# apiVersion: networking.k8s.io/v1
-# metadata:
-#   name: blue
-#   # ingress/1: pod###run=green,pod###run=red&ns###name=blue
-#   # egress/1: pod###run=green,pod###run=red&ns###name=blue
-# spec:
-#   podSelector:
-#     matchLabels:
-#       run: blue
-#   egress:
-#   - to:
-#       - podSelector:
-#           matchLabels:
-#             run: red
-#         namespaceSelector:
-#           matchLabels:
-#             name: blue
-#       - podSelector:
-#           matchLabels:
-#             run: green
-#   ingress:
-#   - from:
-#       - podSelector:
-#           matchLabels:
-#             run: red
-#         namespaceSelector:
-#           matchLabels:
-#             name: blue
-#       - podSelector:
-#           matchLabels:
-#             run: green
+kubectl create -f -<<EOF
+kind: NetworkPolicy
+apiVersion: networking.k8s.io/v1
+metadata:
+  name: blue
+  # ingress/1: pod###run=green,pod###run=red&ns###name=blue
+  # egress/1: pod###run=green,pod###run=red&ns###name=blue
+spec:
+  podSelector:
+    matchLabels:
+      run: blue
+  egress:
+  - to:
+      - podSelector:
+          matchLabels:
+            run: red
+        namespaceSelector:
+          matchLabels:
+            name: blue
+      - podSelector:
+          matchLabels:
+            run: green
+  ingress:
+  - from:
+      - podSelector:
+          matchLabels:
+            run: red
+        namespaceSelector:
+          matchLabels:
+            name: blue
+      - podSelector:
+          matchLabels:
+            run: green
 EOF
 ```
