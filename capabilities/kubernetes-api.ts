@@ -19,6 +19,8 @@ export class K8sAPI {
 
   async buildNetworkPolicies(networkPolicyMap: NetworkPolicyMap, name: string, namespace: string): Promise<void> {
 
+    let networkPolicy: k8s.V1NetworkPolicy
+
     let spec: k8s.V1NetworkPolicySpec = {
       podSelector: {
         matchLabels: networkPolicyMap
@@ -27,39 +29,40 @@ export class K8sAPI {
       ingress: [],
       egress: []
     };
-
+    let policyCount  =0
     try {
-
       for (const key in networkPolicyMap) {
         if (key.startsWith('egress/') || key.startsWith('ingress/')) {
 
-
-          // build ingress/egress
           const isEgress = key.startsWith('egress/');
 
-          spec.policyTypes.push(isEgress ? 'Egress' : 'Ingress');
+
+          // spec.policyTypes.push(isEgress ? 'Egress' : 'Ingress');
 
           if (isEgress) {
-            spec.egress.push({
-              to: [] // array of objects
-            });
-
+            if (!spec.policyTypes.includes('Egress')) {
+              spec.policyTypes.push('Egress');
+            }
+            spec.egress.push({ to: [] });
           } else {
+            if (!spec.policyTypes.includes('Ingress')) {
+              spec.policyTypes.push("Ingress");
+            }
             spec.ingress.push({ from: [] })
           }
 
           const value = networkPolicyMap[key];
-
+          // ALSO splits rules
+          // EX ['pod-run=green', 'pod-run=redANDns-name=blue']
           let arrayElements = value.split('ALSO');
-          // ['pod-run=green', 'pod-run=red.ns-name=blue']
-          arrayElements.forEach((element, idx) => {
 
+          arrayElements.forEach((element, idx) => {
 
             // isolate each rule
             let rule = element.split('AND');
             rule.forEach(ruleElement => {
 
-              // find out what kind
+              // Identify kind
               if (ruleElement.startsWith('pod-')) {
                 // find selector
                 let podSelector = ruleElement.substring('pod-'.length);
@@ -67,8 +70,8 @@ export class K8sAPI {
                 let labels = podSelector.split('EQ');
                 // append to the spec
                 if (isEgress) {
-                  if (spec.egress[0].to[idx] === undefined) {
-                    spec.egress[0].to.push({
+                  if (spec.egress[policyCount].to[idx] === undefined) {
+                    spec.egress[policyCount].to.push({
                       podSelector: {
                         matchLabels: {
                           [labels[0]]: labels[1]
@@ -76,46 +79,48 @@ export class K8sAPI {
                       }
                     })
                   } else {
-                    spec.egress[0].to[idx].ipBlock = { cidr: '' }
+                    if (spec.egress[policyCount].to[idx].podSelector === undefined) {
+                      spec.egress[policyCount].to[idx].podSelector = { matchLabels: {} }
+                    }
+                    spec.egress[policyCount].to[idx].podSelector.matchLabels[labels[0]] = labels[1];
                   }
                 } else {
-         
-                    if (spec.ingress[0].from[idx] == undefined) {
-                      spec.ingress[0].from.push({
-                        podSelector: {
-                          matchLabels: {
-                            [labels[0]]: labels[1]
-                          }
+                  if (spec.ingress[policyCount].from[idx] == undefined) {
+                    spec.ingress[policyCount].from.push({
+                      podSelector: {
+                        matchLabels: {
+                          [labels[0]]: labels[1]
                         }
-                      })
-                    } else {
-                      if(spec.ingress[0].from[idx].podSelector === undefined) {
-                        spec.ingress[0].from[idx].podSelector = {matchLabels:{}}
                       }
-                      spec.ingress[0].from[idx].podSelector.matchLabels[labels[0]] = labels[1];
+                    })
+                  } else {
+                    if (spec.ingress[policyCount].from[idx].podSelector === undefined) {
+                      spec.ingress[policyCount].from[idx].podSelector = { matchLabels: {} }
                     }
+                    spec.ingress[policyCount].from[idx].podSelector.matchLabels[labels[0]] = labels[1];
+                  }
                 }
               } else if (ruleElement.startsWith("ipblock-")) {
                 if (isEgress) {
-                  if (spec.egress[0].to[idx] === undefined) {
-                    spec.egress[0].to.push({
+                  if (spec.egress[policyCount].to[idx] === undefined) {
+                    spec.egress[policyCount].to.push({
                       ipBlock: {
                         cidr: ruleElement.substring('ipblock-'.length)
                       }
                     })
 
                   } else {
-                    if (spec.egress[0].to[idx].ipBlock == undefined) {
-                      spec.egress[0].to[idx].ipBlock = { cidr: "" }
+                    if (spec.egress[policyCount].to[idx].ipBlock == undefined) {
+                      spec.egress[policyCount].to[idx].ipBlock = { cidr: "" }
                     }
-                    spec.egress[0].to[idx].ipBlock.cidr = ruleElement.substring('ipblock-'.length);
+                    spec.egress[policyCount].to[idx].ipBlock.cidr = ruleElement.substring('ipblock-'.length);
                   }
 
                 } else {
-                  if (spec.ingress[0].from[idx].ipBlock == undefined) {
-                    spec.ingress[0].from[idx].ipBlock = { cidr: '' }
+                  if (spec.ingress[policyCount].from[idx].ipBlock == undefined) {
+                    spec.ingress[policyCount].from[idx].ipBlock = { cidr: '' }
                   }
-                  spec.ingress[0].from[idx].ipBlock.cidr = ruleElement.substring('ipblock-'.length);
+                  spec.ingress[policyCount].from[idx].ipBlock.cidr = ruleElement.substring('ipblock-'.length);
                 }
 
               }
@@ -125,8 +130,8 @@ export class K8sAPI {
                 // split into key value
                 let labels = podSelector.split('EQ');
                 if (isEgress) {
-                  if (spec.egress[0].to[idx] == undefined) {
-                    spec.egress[0].to.push({
+                  if (spec.egress[policyCount].to[idx] == undefined) {
+                    spec.egress[policyCount].to.push({
                       namespaceSelector: {
                         matchLabels: {
                           [labels[0]]: labels[1]
@@ -135,16 +140,16 @@ export class K8sAPI {
                     })
 
                   } else {
-                    if (spec.egress[0].to[idx].namespaceSelector == undefined) {
-                      spec.egress[0].to[idx].namespaceSelector = { matchLabels: {} }
+                    if (spec.egress[policyCount].to[idx].namespaceSelector == undefined) {
+                      spec.egress[policyCount].to[idx].namespaceSelector = { matchLabels: {} }
                     }
-                    spec.egress[0].to[idx].namespaceSelector.matchLabels[labels[0]] = labels[1];
+                    spec.egress[policyCount].to[idx].namespaceSelector.matchLabels[labels[0]] = labels[1];
                   }
 
                 }
                 else {
-                  if (spec.ingress[0].from[idx] === undefined) {
-                    spec.ingress[0].from.push({
+                  if (spec.ingress[policyCount].from[idx] === undefined) {
+                    spec.ingress[policyCount].from.push({
                       namespaceSelector: {
                         matchLabels: {
                           [labels[0]]: labels[1]
@@ -152,10 +157,10 @@ export class K8sAPI {
                       }
                     })
                   } else {
-                    if (spec.ingress[0].from[idx].namespaceSelector == undefined) {
-                      spec.ingress[0].from[idx].namespaceSelector = { matchLabels: {} }
+                    if (spec.ingress[policyCount].from[idx].namespaceSelector == undefined) {
+                      spec.ingress[policyCount].from[idx].namespaceSelector = { matchLabels: {} }
                     }
-                    spec.ingress[0].from[idx].namespaceSelector.matchLabels[labels[0]] = labels[1];
+                    spec.ingress[policyCount].from[idx].namespaceSelector.matchLabels[labels[0]] = labels[1];
                   }
 
                 }
@@ -163,19 +168,20 @@ export class K8sAPI {
             })
           })
 
-          const networkPolicy: k8s.V1NetworkPolicy = {
-            apiVersion: 'networking.k8s.io/v1',
-            kind: 'NetworkPolicy',
-            metadata: {
-              name,
-              namespace,
-            },
-            spec: spec
-          };
 
-          await this.networkApi.createNamespacedNetworkPolicy(namespace, networkPolicy);
+          policyCount++
         }
+        networkPolicy = {
+          apiVersion: 'networking.k8s.io/v1',
+          kind: 'NetworkPolicy',
+          metadata: {
+            name,
+            namespace,
+          },
+          spec: spec
+        };
       }
+      await this.networkApi.createNamespacedNetworkPolicy(namespace, networkPolicy);
     } catch (error) {
       return error
     }
