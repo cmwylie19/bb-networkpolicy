@@ -44,10 +44,8 @@ metadata:
   labels:
     run: blue
     pepr.dev/netpol: enabled
-    # ingress/1: pod-runEQgreenALSOpod-runEQredANDns-nameEQblue
-    # egress/test: pod-runEQgreenALSOpod-runEQredANDns-nameEQblue
-    ingress/1: pod-runEQgreen
-    ingress/2: pod-runEQredANDns-nameEQblue
+    ingress/1: pod-runEQgreenALSOpod-runEQredANDns-nameEQblue
+    egress/test: pod-runEQgreenALSOpod-runEQredANDns-nameEQblue
   name: blue
 spec:
   containers:

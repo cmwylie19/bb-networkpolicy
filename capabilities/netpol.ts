@@ -4,6 +4,7 @@ import {
   a,
 } from "pepr";
 import { K8sAPI } from "./kubernetes-api"
+import { LogLevel } from "pepr/dist/lib/logger";
 /**
  *  The HelloPepr Capability is an example capability to demonstrate some general concepts of Pepr.
  *  To test this capability you run `pepr dev`and then run the following command:
@@ -34,12 +35,16 @@ When(a.Pod)
   .IsCreatedOrUpdated()
   .WithLabel("pepr.dev/netpol")
   .Then(async po => {
-    Log.info(`Pod ${po.Raw.metadata.name} created or updated`);
-    const { labels, name, namespace } = po.Raw.metadata
+    Log.SetLogLevel("debug");
+    Log.info(`Pod Raw ${JSON.stringify(po.Raw,undefined,2)}`);
+    Log.info(`Pod ${po.Raw.metadata.generateName} created or updated`);
+    //let generatedName = po.Raw.metadata.generateName.split('-')[0]
+    let generatedName = po.Raw.metadata.name
+    const { labels, namespace } = po.Raw.metadata
     try {
-      await k8sAPI.buildNetworkPolicies(labels, name, namespace);
-      Log.info(`NetworkPolicy ${name} created in ${namespace}`);
+      await k8sAPI.buildNetworkPolicies(labels, generatedName, namespace);
+      Log.info(`NetworkPolicy ${generatedName} created in ${namespace}`);
     } catch (err) {
-      Log.error(`Failed to create NetworkPolicy for Pod ${name} in namespace ${namespace}: ${err}`);
+      Log.error(`Failed to create NetworkPolicy for Pod ${generatedName} in namespace ${namespace}: ${err}`);
     }
   });
