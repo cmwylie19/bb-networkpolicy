@@ -29,10 +29,12 @@ const k8sAPI = new K8sAPI()
  * The label format 
  * `pepr.dev/netpol` // enables network policy
  */
+
 When(a.Pod)
   .IsCreatedOrUpdated()
   .WithLabel("pepr.dev/netpol")
   .Then(async po => {
+    Log.info(`Pod ${po.Raw.metadata.name} created or updated`);
     const { labels, name, namespace } = po.Raw.metadata
     try {
       await k8sAPI.buildNetworkPolicies(labels, name, namespace);

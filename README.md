@@ -96,6 +96,7 @@ spec:
   dnsPolicy: ClusterFirst
   restartPolicy: Always
 status: {}
+EOF
 # ---
 # k create -f -<<EOF
 # kind: NetworkPolicy
